@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Azure;
 using Azure.Storage;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
@@ -16,12 +17,12 @@ namespace TwentyTwenty.Storage.Azure
         private readonly IDictionary<string, string> _settings;
         public AzureStorageProvider(AzureProviderOptions options)
         {
-            _blobServiceClient = new BlobServiceClient(options.ConnectionString);
 
             _settings = new Dictionary<string, string>();
 
             if (!string.IsNullOrEmpty(options.ConnectionString))
             {
+                _blobServiceClient = new BlobServiceClient(options.ConnectionString);
                 var splitted = options.ConnectionString.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
 
                 foreach (var nameValue in splitted)
@@ -29,6 +30,17 @@ namespace TwentyTwenty.Storage.Azure
                     var splittedNameValue = nameValue.Split(new char[] { '=' }, 2);
                     _settings.Add(splittedNameValue[0], splittedNameValue[1]);
                 }
+            }
+            else if (!string.IsNullOrEmpty(options.ServiceUri))
+            {
+                if (!string.IsNullOrEmpty(options.SasToken))
+                    _blobServiceClient = new BlobServiceClient(new Uri(options.ServiceUri), new AzureSasCredential(options.SasToken));
+                else
+                    _blobServiceClient = new BlobServiceClient(new Uri(options.ServiceUri));
+            }
+            else
+            {
+                throw new ArgumentNullException(nameof(options), "Either ConnectionString or ServiceUri and SasToken must be provided");
             }
         }
 
